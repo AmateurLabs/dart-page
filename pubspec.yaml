@@ -1,0 +1,14 @@
+name: page
+version: 0.0.1
+description: The Pretty Awesome Game Engine.
+environment:
+  sdk: '>=1.0.0 <2.0.0'
+dependencies:
+  desk:
+    path: C:\Users\Maroy\Documents\GitHub\dart-desk\
+  pencil:
+    path: C:\Users\Maroy\Documents\GitHub\dart-pencil\
+  ruler:
+    path: C:\Users\Maroy\Documents\GitHub\dart-ruler\
+  tail:
+    path: C:\Users\Maroy\Documents\GitHub\dart-tail\
