@@ -2,13 +2,12 @@ library page;
 
 import "dart:html";
 import "dart:collection";
-import "dart:js";
 import "package:ruler/ruler.dart";
 import "package:tail/tail.dart";
 import "package:pencil/pencil.dart";
 import "package:desk/desk.dart";
 
-class Page {
+abstract class Page {
   CanvasElement canvas;
   Ruler ruler;
   Tail tail;
@@ -27,34 +26,53 @@ class Page {
   bool contains(Vector p) => p.x >= 0 && p.y >= 0 && p.x < width && p.y < height;
   
   ActorList<Actor> actors;
-  List<ActorList> _lists = new List<ActorList>();
+  SystemList<System> systems;
+  SafeList<ActorList> lists;
   
-  List<System> systems;
+  List<SafeList> _lists;
   
-  Page({int width:800, int height:600}) {
-    context.deleteProperty("webkitAudioContext"); //Workaround; webkit-prefixed property still exists in Chrome but is deprecated
+  bool _started = false;
+  
+  Page({int width:640, int height:480}) {
     ruler = new Ruler();
     pencil = new Pencil.createCanvas(document.body, width, height);
     pencil.getContext().lineWidth = 1.5;
     canvas = pencil.getCanvas();
     tail = new Tail(canvas);
     desk = new Desk();
-    ruler.onUpdate(update);
+    ruler.onUpdate(_update);
+    _lists = new List<SafeList>();
+    actors = new ActorList();
+    actors.page = this;
+    systems = new SystemList();
+    systems.page = this;
+    lists = new SafeList<ActorList>();
+    lists.page = this;
+    _lists.addAll([actors, systems, lists]);
     ruler.start();
-    actors = new ActorList(this);
-    systems = new List<System>();
+  }
+
+  int _nextId = 0;
+  
+  void _update(num dt) {
+    if (!_started) {
+      _started = true;
+      start();
+    }
+    tail.update();
+    for (SafeList list in _lists) list._update();
+    for (Actor obj in actors) {
+      if (obj._id == null) obj._id = _nextId++;
+      obj.update(dt);
+    }
+    update(dt);
+    for (System sys in systems) sys.update(dt);
+    for (SafeList list in _lists) list._update();
+    
+    _draw();
   }
   
-  void update(num dt) {
-    tail.update();
-    actors.sort((Actor a, Actor b) => (a.depth - b.depth).sign);
-    for (ActorList list in _lists) list._update();
-    for (Actor obj in actors) obj.update(dt);
-    for (ActorList list in _lists) list._update();
-    
-    systems.sort((System a, System b) => (a.priority - b.priority).sign);
-    for (System sys in systems) sys.update(dt);
-    
+  void _draw() {
     if (clearColor != null) pencil.clear(clearColor);
     else pencil.clear();
     for (Actor actor in actors) {
@@ -67,27 +85,24 @@ class Page {
         if (debugShape != null) {
           debugShape = debugShape.clone();
           debugShape.fill = null;
-          debugShape.stroke = Color.spectrum[actor.id % Color.spectrum.length];
+          debugShape.stroke = Color.spectrum[actor._id % Color.spectrum.length];
           pencil.move(actor.position.x, actor.position.y).rotate(actor.rotation).shape(debugShape).draw();
         }
       }
     }
   }
   
-  int _nextId = 0;
-  
-  Actor addActor(Actor actor) {
-    actor.id = _nextId++;
-    actors.add(actor);
-    return actor;
-  }
+  void start();
+  void update(num dt);
 }
 
-class Actor<T extends Shape> {
-  int id = -1;
+class Actor<T extends Shape> extends SafeListItem {
+  int _id;
   Vector position;
   num rotation;
-  num depth;  
+  num depth;
+  num get priority => depth;
+  void set priority(num v) { priority = v; }
   T shape;
   Sprite sprite;
   
@@ -96,14 +111,13 @@ class Actor<T extends Shape> {
   bool _destroyed = false;
   bool get destroyed => _destroyed;
   
-  Actor(Page page, {Vector position, num rotation, num depth, T shape, Sprite sprite}) {
+  Actor({Vector position, num rotation, num depth, T shape, Sprite sprite}) {
     if (position != null) this.position = new Vector.from(position);
     else this.position = Vector.zero;
     this.rotation = rotation ?? 0.0;
     this.depth = depth ?? 0;
     this.sprite = sprite ?? null;
     this.shape = shape ?? null;
-    page.addActor(this);
   }
   
   void destroy() {
@@ -123,13 +137,9 @@ class Actor<T extends Shape> {
   void update(num dt) { }
 }
 
-class System {
+class System extends SafeListItem {
   ActorList list;
-  num priority;
-  
-  System(Page page) {
-    page.systems.add(this);
-  }
+  num priority = 0.0;
   
   bool isRelevant(Actor actor) { return false; }
   
@@ -138,21 +148,44 @@ class System {
   }
 }
 
-class ActorList<T extends Actor> extends ListBase {
-  
-  ActorList(Page page) {
-    page._lists.add(this);
+class ActorList<T extends Actor> extends SafeList<T> {  
+  void _update() {
+    _removeList.addAll(_objs.where((T obj) => obj._destroyed));
+    super._update();
   }
   
+  void setVisible(bool visible) {
+    for (T actor in _objs) actor.visible = visible;
+  }
+  
+  void destroy() {
+    for (T actor in _objs) actor.destroy();
+  }
+}
+
+class SystemList<T extends System> extends SafeList<T> {
+  
+}
+
+class SafeListItem {
+  Page page;
+  num priority = 0.0;
+}
+
+class SafeList<T extends SafeListItem> extends ListBase with SafeListItem {
   List<T> _objs = new List<T>();
   List<T> _addList = new List<T>();
   Set<T> _removeList = new Set<T>();
   
-  void add(T obj) => _addList.add(obj);
+  void add(T obj) {
+    obj.page = page;
+    _addList.add(obj);
+  }
   
   bool remove(T obj) {
-    _removeList.add(obj);
-    return _objs.contains(obj);
+    bool contains = _objs.contains(obj);
+    if (contains) _removeList.add(obj);
+    return contains;
   }
   
   int get length => _objs.length;
@@ -160,20 +193,16 @@ class ActorList<T extends Actor> extends ListBase {
     this._objs.length = l;
   }
   
-  Actor operator [](int index) => _objs[index];
-  void operator []=(int index, Actor value) {
+  T operator [](int index) => _objs[index];
+  void operator []=(int index, T value) {
     _objs[index] = value;
   }
   
   void _update() {
-    _objs.removeWhere((T obj) => obj._destroyed || _removeList.contains(obj));
+    _objs.removeWhere((T obj) => _removeList.contains(obj));
     _removeList.clear();
     _objs.addAll(_addList);
     _addList.clear();
-  }
-  
-  void destroy() {
-    for (T actor in _objs) actor.destroy();
-    _update();
+    _objs.sort((T a, T b) => (a.priority - b.priority).sign);
   }
 }
