@@ -5,10 +5,10 @@ environment:
   sdk: '>=1.0.0 <2.0.0'
 dependencies:
   desk:
-    git: https://github.com/AmateurLabs/dart-desk.git
+    git: git://github.com/AmateurLabs/dart-desk.git
   pencil:
-    git: https://github.com/AmateurLabs/dart-pencil.git
+    git: git://github.com/AmateurLabs/dart-pencil.git
   ruler:
-    git: https://github.com/AmateurLabs/dart-ruler.git
+    git: git://github.com/AmateurLabs/dart-ruler.git
   tail:
-    git: https://github.com/AmateurLabs/dart-tail.git
+    git: git://github.com/AmateurLabs/dart-tail.git
