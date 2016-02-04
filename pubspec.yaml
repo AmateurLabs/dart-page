@@ -1,14 +1,14 @@
 name: page
-version: 0.0.3
+version: 0.0.4
 description: The Pretty Awesome Game Engine.
 environment:
   sdk: '>=1.0.0 <2.0.0'
 dependencies:
   desk:
-    git: git://github.com/AmateurLabs/dart-desk.git
+    git: https://github.com/AmateurLabs/dart-desk.git
   pencil:
-    git: git://github.com/AmateurLabs/dart-pencil.git
+    git: https://github.com/AmateurLabs/dart-pencil.git
   ruler:
-    git: git://github.com/AmateurLabs/dart-ruler.git
+    git: https://github.com/AmateurLabs/dart-ruler.git
   tail:
-    git: git://github.com/AmateurLabs/dart-tail.git
+    git: https://github.com/AmateurLabs/dart-tail.git
