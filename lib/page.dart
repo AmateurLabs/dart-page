@@ -77,8 +77,12 @@ abstract class Page {
     else pencil.clear();
     for (Actor actor in actors) {
       if (!actor.visible) continue;
-      if (actor.sprite != null) pencil.move(actor.position.x, actor.position.y).rotate(actor.rotation).sprite(actor.sprite).draw();
-      if (actor.shape != null) pencil.move(actor.position.x, actor.position.y).rotate(actor.rotation).shape(actor.shape).draw();
+      actor._drawn = true;
+      actor.draw();
+      if (!actor._drawn) {
+        if (actor.sprite != null) pencil.move(actor.position.x, actor.position.y).rotate(actor.rotation).sprite(actor.sprite).draw();
+        if (actor.shape != null) pencil.move(actor.position.x, actor.position.y).rotate(actor.rotation).shape(actor.shape).draw();
+      }
       if (debug) {
         Shape debugShape = (actor.shape ?? actor.sprite?.getBounds());
         if (debugShape is Label) debugShape = null;
@@ -113,6 +117,9 @@ class Actor<T extends Shape> extends SafeListItem {
   bool _destroyed = false;
   bool get destroyed => _destroyed;
   
+  bool _drawn = false;
+  void drawDefault() { _drawn = false; }
+  
   Actor({Vector position, num rotation, num depth, T shape, Sprite sprite}) {
     if (position != null) this.position = new Vector.from(position);
     else this.position = Vector.zero;
@@ -137,6 +144,7 @@ class Actor<T extends Shape> extends SafeListItem {
   bool contains(Vector p) => HitTest.contains(getWorldShape(), p);
   
   void update(num dt) { }
+  void draw() { drawDefault(); }
 }
 
 class System extends SafeListItem {
