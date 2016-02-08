@@ -90,10 +90,12 @@ abstract class Page {
         }
       }
     }
+    draw();
   }
   
-  void start();
-  void update(num dt);
+  void start() { }
+  void update(num dt) { }
+  void draw() { }
 }
 
 class Actor<T extends Shape> extends SafeListItem {
